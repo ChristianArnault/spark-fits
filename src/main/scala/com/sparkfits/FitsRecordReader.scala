@@ -328,7 +328,7 @@ class FitsRecordReader extends RecordReader[LongWritable, List[List[_]]] {
       // val it = recordValueBytes.grouped(rowSizeLong.toInt)
       // val cols = it.toList.transpose
 
-      val recordValue = fB.readColsFromBuffer(recordValueBytes).toList.transpose
+      recordValue = fB.readColsFromBuffer(recordValueBytes).transpose
       // val tmp = fB.readColsFromBuffer(recordValueBytes).toList
       // for (t <- tmp) {
       //   println(t.size)
