@@ -325,12 +325,22 @@ class FitsRecordReader extends RecordReader[LongWritable, List[List[_]]] {
       fB.data.readFully(recordValueBytes, 0, recordLength)
 
       // Group by row
-      val it = recordValueBytes.grouped(rowSizeLong.toInt)
+      // val it = recordValueBytes.grouped(rowSizeLong.toInt)
+      // val cols = it.toList.transpose
+
+      val tmp = fB.readColsFromBuffer(recordValueBytes).toList.transpose
+      // val tmp = fB.readColsFromBuffer(recordValueBytes).toList
+      // for (t <- tmp) {
+      //   println(t.size)
+      // }
+      // for (col, pos <- cols.zipWithIndex) {
+      //
+      // }
 
       // Convert each row
-      val tmp = for {
-        i <- 0 to recordLength / rowSizeLong.toInt - 1
-      } yield (fB.readLineFromBuffer(it.next()))
+      // val tmp = for {
+      //   i <- 0 to recordLength / rowSizeLong.toInt - 1
+      // } yield (fB.readLineFromBuffer(it.next()))
 
       // Back to List
       // recordValue = tmp.map(x=>Row.fromSeq(x)).toList

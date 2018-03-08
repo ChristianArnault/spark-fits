@@ -105,6 +105,13 @@ object FitsLib {
       (0 :: rowSplitLocations(0)).scan(0)(_ +_).tail
     }
 
+    // Size in Bytes of one row
+    val rowSizeLong = if (empty_hdu) {
+      0
+    } else {
+      getSizeRowBytes(blockHeader)
+    }
+
     /**
       * Return the indices of the first and last bytes of the HDU:
       * hdu_start=header_start, data_start, data_stop, hdu_stop
@@ -390,6 +397,143 @@ object FitsLib {
           0
         }
       }
+    }
+
+    def readColsFromBuffer(cols: Array[Byte], index: Int=0): List[List[Any]] = {
+
+      if (index == ncols) {
+        Nil
+      } else {
+        // Need to know the type of the cols
+        val bufferSize = splitLocations(index+1) - splitLocations(index)
+        // println(bufferSize, rowSizeLong.toInt)
+
+        // Take a buffer size every rowsizeth position.
+        val colByteIterator = cols.slice(
+          splitLocations(index), cols.size).sliding(bufferSize, rowSizeLong.toInt)
+        val fitstype = rowTypes(index)
+        fitstype match {
+          case x if fitstype.contains("I") => readColShort(colByteIterator) :: readColsFromBuffer(cols, index + 1)
+          case x if fitstype.contains("J") => readColInt(colByteIterator) :: readColsFromBuffer(cols, index + 1)
+          case x if fitstype.contains("K") => readColLong(colByteIterator) :: readColsFromBuffer(cols, index + 1)
+          case x if fitstype.contains("E") => readColFloat(colByteIterator) :: readColsFromBuffer(cols, index + 1)
+          case x if fitstype.contains("D") => readColDouble(colByteIterator) :: readColsFromBuffer(cols, index + 1)
+          case x if fitstype.contains("A") => readColChar(colByteIterator) :: readColsFromBuffer(cols, index + 1)
+          case x if fitstype.contains("L") => readColBool(colByteIterator) :: readColsFromBuffer(cols, index + 1)
+          case _ => {
+            println(s"""
+                Cannot infer size of type $fitstype from the header!
+                See com.sparkfits.FitsLib.readColsFromBuffer
+                """)
+            List[Int]() :: readColsFromBuffer(cols, index + 1)
+          }
+        }
+      }
+    }
+
+    /**
+      * Read a portion of a column containing Floats.
+      */
+    def readColFloat(buffer: Iterator[Array[Byte]]) : List[Float] = {
+
+      // Number of row
+      // val nrow = buffer.size
+
+      val col = buffer.map(x => ByteBuffer.wrap(x, 0, 4).getFloat())
+      // val col = for {
+      //   i <- 0 to nrow - 1
+      // } yield(ByteBuffer.wrap(buffer.next(), 0, 4).getFloat())
+      col.toList
+    }
+
+    /**
+      * Read a portion of a column containing Floats.
+      */
+    def readColBool(buffer: Iterator[Array[Byte]]) : List[Boolean] = {
+
+      // Number of row
+      // val nrow = buffer.size
+
+      val col = buffer.map(x => x(0).toChar == 'T')
+      // val col = for {
+      //   i <- 0 to nrow - 1
+      // } yield(buffer.next()(0).toChar == 'T')
+      col.toList
+    }
+
+    /**
+      * Read a portion of a column containing Ints.
+      */
+    def readColInt(buffer: Iterator[Array[Byte]]) : List[Int] = {
+
+      // Number of row
+      // val nrow = buffer.size
+
+      val col = buffer.map(x => ByteBuffer.wrap(x, 0, 4).getInt())
+      // val col = for {
+      //   i <- 0 to nrow - 1
+      // } yield(ByteBuffer.wrap(buffer.next(), 0, 4).getInt())
+      col.toList
+    }
+
+    /**
+      * Read a portion of a column containing Ints.
+      */
+    def readColShort(buffer: Iterator[Array[Byte]]) : List[Short] = {
+
+      // Number of row
+      // val nrow = buffer.size
+
+      val col = buffer.map(x => ByteBuffer.wrap(x, 0, 2).getShort())
+      // val col = for {
+      //   i <- 0 to nrow - 1
+      // } yield(ByteBuffer.wrap(buffer.next(), 0, 2).getShort())
+      col.toList
+    }
+
+    /**
+      * Read a portion of a column containing Ints.
+      */
+    def readColLong(buffer: Iterator[Array[Byte]]) : List[Long] = {
+
+      // Number of row
+      // val nrow = buffer.size
+
+      val col = buffer.map(x => ByteBuffer.wrap(x, 0, 8).getLong())
+      // val col = for {
+      //   i <- 0 to nrow - 1
+      // } yield(ByteBuffer.wrap(buffer.next(), 0, 8).getLong())
+      col.toList
+    }
+
+    /**
+      * Read a portion of a column containing Ints.
+      */
+    def readColDouble(buffer: Iterator[Array[Byte]]) : List[Double] = {
+
+      // Number of row
+      // val nrow = buffer.size
+
+      val col = buffer.map(x => ByteBuffer.wrap(x, 0, 8).getDouble())
+      // val col = for {
+      //   i <- 0 to nrow - 1
+      // } yield(ByteBuffer.wrap(buffer.next(), 0, 8).getDouble())
+      col.toList
+    }
+
+    /**
+      * Read a portion of a column containing Ints.
+      */
+    def readColChar(buffer: Iterator[Array[Byte]]) : List[String] = {
+
+      // Number of row
+      // val nrow = buffer.size
+
+      val col = buffer.map(x => new String(x, StandardCharsets.UTF_8).trim())
+      // val col = for {
+      //   i <- 0 to nrow - 1
+      // } yield(new String(buffer.next(), StandardCharsets.UTF_8).trim())
+      col.toList
     }
 
     /**
