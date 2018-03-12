@@ -405,21 +405,22 @@ object FitsLib {
         Nil
       } else {
         // Need to know the type of the cols
-        val bufferSize = splitLocations(index+1) - splitLocations(index)
+        // val bufferSize = splitLocations(index+1) - splitLocations(index)
         // println(bufferSize, rowSizeLong.toInt)
 
         // Take a buffer size every rowsizeth position.
-        val colByteIterator = cols.slice(
-          splitLocations(index), cols.size).sliding(bufferSize, rowSizeLong.toInt)
+        // val colByteIterator = cols.slice(
+        //   splitLocations(index), cols.size).sliding(bufferSize, rowSizeLong.toInt)
         val fitstype = rowTypes(index)
         fitstype match {
-          case x if fitstype.contains("I") => readColShort(colByteIterator) :: readColsFromBuffer(cols, index + 1)
-          case x if fitstype.contains("J") => readColInt(colByteIterator) :: readColsFromBuffer(cols, index + 1)
-          case x if fitstype.contains("K") => readColLong(colByteIterator) :: readColsFromBuffer(cols, index + 1)
-          case x if fitstype.contains("E") => readColFloat(colByteIterator) :: readColsFromBuffer(cols, index + 1)
-          case x if fitstype.contains("D") => readColDouble(colByteIterator) :: readColsFromBuffer(cols, index + 1)
-          case x if fitstype.contains("A") => readColChar(colByteIterator) :: readColsFromBuffer(cols, index + 1)
-          case x if fitstype.contains("L") => readColBool(colByteIterator) :: readColsFromBuffer(cols, index + 1)
+          // case x if fitstype.contains("I") => readColShort(cols) :: readColsFromBuffer(cols, index + 1)
+          // case x if fitstype.contains("J") => readColInt(cols) :: readColsFromBuffer(cols, index + 1)
+          // case x if fitstype.contains("K") => readColLong(cols) :: readColsFromBuffer(cols, index + 1)
+          case x if fitstype.contains("E") => readColFloat(cols, index) :: readColsFromBuffer(cols, index + 1)
+          // case x if fitstype.contains("E") => readColFloatIt(colByteIterator, index) :: readColsFromBuffer(cols, index + 1)
+          // case x if fitstype.contains("D") => readColDouble(cols) :: readColsFromBuffer(cols, index + 1)
+          // case x if fitstype.contains("A") => readColChar(cols) :: readColsFromBuffer(cols, index + 1)
+          // case x if fitstype.contains("L") => readColBool(cols) :: readColsFromBuffer(cols, index + 1)
           case _ => {
             println(s"""
                 Cannot infer size of type $fitstype from the header!
@@ -434,16 +435,39 @@ object FitsLib {
     /**
       * Read a portion of a column containing Floats.
       */
-    def readColFloat(buffer: Iterator[Array[Byte]]) : List[Float] = {
+    def readColFloat(buffer: Array[Byte], index: Int) : List[Float] = {
 
       // Number of row
-      // val nrow = buffer.size
+      val nrow = buffer.size / rowSizeLong.toInt
 
-      val col = buffer.map(x => ByteBuffer.wrap(x, 0, 4).getFloat())
+      val start = splitLocations(index)
+      val length = splitLocations(index+1) - splitLocations(index)
+
+      val col = for {
+        i <- 0 to nrow - 1
+      } yield(ByteBuffer.wrap(buffer.slice(i*rowSizeLong.toInt, (i+1)*rowSizeLong.toInt), start, length).getFloat())
+      col.toList
+    }
+
+    /**
+      * Read a portion of a column containing Floats.
+      */
+    def readColFloatIt(buffer: Iterator[Array[Byte]], index: Int) : List[Float] = {
+
+      val buf = buffer.toArray.flatten
+      val arrF = new Array[Float](buf.size / rowSizeLong.toInt)
+      ByteBuffer.wrap(buf).asFloatBuffer.get(arrF)
+      arrF.toList
+      // Number of row
+      // val nrow = buffer.size / rowSizeLong.toInt
+
+      // val start = splitLocations(index)
+      // val length = splitLocations(index+1) - splitLocations(index)
+      //
       // val col = for {
       //   i <- 0 to nrow - 1
-      // } yield(ByteBuffer.wrap(buffer.next(), 0, 4).getFloat())
-      col.toList
+      // } yield(ByteBuffer.wrap(buffer.slice(i*rowSizeLong.toInt, (i+1)*rowSizeLong.toInt), start, length).getFloat())
+      // col.toList
     }
 
     /**
